@@ -486,7 +486,8 @@ class Ollama extends BaseLLM implements ModelInstaller {
 
         const [sysMsg] = result.splice(i, 1);
         result.splice(insertIdx, 0, sysMsg);
-        // Don't increment i — re-check current position after splice
+        // The tool message that preceded the system message is now at i, so
+        // the loop's i++ moves on to the message that followed it.
       }
     }
 

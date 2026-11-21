@@ -223,4 +223,94 @@ describe("Ollama", () => {
       expect(result[1].role).toBe("tool");
     });
   });
+
+  describe("_streamChat tools", () => {
+    const tools = [
+      {
+        type: "function" as const,
+        displayTitle: "Read",
+        function: {
+          name: "read_file",
+          description: "Read a file",
+          parameters: {
+            type: "object",
+            properties: { path: { type: "string" } },
+          },
+        },
+      },
+    ];
+
+    async function sentBody(messages: ChatMessage[]) {
+      const ollama = createOllama() as any;
+      ollama.modelMap = {};
+      ollama.apiBase = "http://localhost:11434/";
+      ollama.modelInfoPromise = Promise.resolve();
+      ollama.fetch = jest.fn().mockResolvedValue({
+        status: 200,
+        json: async () => ({
+          message: { role: "assistant", content: "done" },
+        }),
+      });
+
+      const stream = ollama._streamChat(
+        messages,
+        new AbortController().signal,
+        { model: "test-model", stream: false, tools },
+      );
+      for await (const _ of stream) {
+        // drain
+      }
+      return JSON.parse(ollama.fetch.mock.calls[0][1].body);
+    }
+
+    it("sends tools when the last message is from the user", async () => {
+      const body = await sentBody([{ role: "user", content: "read a.ts" }]);
+      expect(body.tools).toHaveLength(1);
+      expect(body.tools[0].function.name).toBe("read_file");
+    });
+
+    it("sends tools on the request that follows a tool result", async () => {
+      const body = await sentBody([
+        { role: "user", content: "read a.ts" },
+        {
+          role: "assistant",
+          content: "",
+          toolCalls: [
+            {
+              id: "tc_1",
+              type: "function",
+              function: {
+                name: "read_file",
+                arguments: '{"path":"a.ts"}',
+              },
+            },
+          ],
+        },
+        { role: "tool", content: "file contents", toolCallId: "tc_1" },
+      ]);
+      expect(body.messages.at(-1).role).toBe("tool");
+      expect(body.tools).toHaveLength(1);
+      expect(body.tools[0].function.name).toBe("read_file");
+    });
+
+    it("omits tools when none are given", async () => {
+      const ollama = createOllama() as any;
+      ollama.modelMap = {};
+      ollama.apiBase = "http://localhost:11434/";
+      ollama.modelInfoPromise = Promise.resolve();
+      ollama.fetch = jest.fn().mockResolvedValue({
+        status: 200,
+        json: async () => ({ message: { role: "assistant", content: "hi" } }),
+      });
+      for await (const _ of ollama._streamChat(
+        [{ role: "user", content: "hi" }],
+        new AbortController().signal,
+        { model: "test-model", stream: false },
+      )) {
+        // drain
+      }
+      const body = JSON.parse(ollama.fetch.mock.calls[0][1].body);
+      expect(body.tools).toBeUndefined();
+    });
+  });
 });
