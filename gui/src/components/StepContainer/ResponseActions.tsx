@@ -39,7 +39,8 @@ export default function ResponseActions({
       ? "text-warning"
       : "text-description-muted";
 
-  const showLabel = isLast && (isPruned || percent >= 60);
+  // Always show the labelled compact button on the latest response.
+  const showLabel = isLast;
 
   const compactConversation = useCompactConversation();
 
@@ -55,13 +56,13 @@ export default function ResponseActions({
         tabIndex={-1}
         onClick={() => compactConversation(index)}
       >
-        <div className="flex items-center space-x-1">
+        <div className="border-command-border flex items-center space-x-1.5 rounded border border-solid px-2 py-1">
           <ArrowsPointingInIcon
-            className={`h-3.5 w-3.5 ${buttonColorClass || "text-description-muted"}`}
+            className={`h-5 w-5 ${buttonColorClass || "text-description-muted"}`}
           />
           {showLabel && (
             <span
-              className={`text-xs ${buttonColorClass || "text-description-muted"}`}
+              className={`text-sm font-medium ${buttonColorClass || "text-description-muted"}`}
             >
               Compact conversation
             </span>

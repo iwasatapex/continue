@@ -5,7 +5,10 @@ import {
   InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import { MessageModes } from "core";
-import { isRecommendedAgentModel } from "core/llm/toolSupport";
+import {
+  isRecommendedAgentModel,
+  modelSupportsNativeTools,
+} from "core/llm/toolSupport";
 import { useCallback, useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import { selectSelectedChatModel } from "../../redux/slices/configSlice";
@@ -25,7 +28,12 @@ export function ModeSelect() {
     if (!selectedModel) {
       return undefined;
     }
-    return isRecommendedAgentModel(selectedModel.model);
+    // Don't warn for models that natively support tools, even if they are
+    // not on the recommended list (e.g. local Ollama models).
+    return (
+      isRecommendedAgentModel(selectedModel.model) ||
+      modelSupportsNativeTools(selectedModel)
+    );
   }, [selectedModel]);
 
   const { mainEditor } = useMainEditor();
